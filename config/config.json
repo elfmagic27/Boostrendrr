@@ -1,0 +1,64 @@
+{
+    "customisation": {
+        "enable": false,
+        "use_custom_pfp": true,
+        "use_custom_banner": true,
+        "nick": "~ .gg/elfmart",
+        "bio": "**Best shop - https://discord.gg/elfmart**"
+    },
+    "auto_config": {
+        "use_autoboosting": true,
+        "max_retry_on_failure": 100,
+        "Use_customization": true
+    },
+    "sellpass": {
+        "api_key": "",
+        "custom_field_name": "Invite",
+        "boosts_success_note": "Boosts Successful! Thanks For Buying",
+        "boosts_fail_note": "Boosts failed due to an error! Please make sure to join our server for support!"
+    },
+    "sellix": {
+        "invite_field_name": "Server Invite Link",
+        "orders": "https://your_sellix_orders_link"
+    },
+    "sellapp": {
+        "enabled": false,
+        "invite_field_name": "Invite",
+        "customisation": {
+            "enabled": true,
+            "nickname_field_name": "Nickname",
+            "bio_field_name": "Bio"
+        }
+    },
+    "webhook_url": "",
+    "port": 5000,
+    "proxyless": false,
+    "status": "Against Discord",
+    "use_log": true,
+    "refresh_interval": 120,
+    "advance_mode": true,
+    "captcha_solver": {
+        "solve_captcha": true,
+        "use": "voidsolver",
+        "hcoptcha_api_key": "",
+        "capsolver_api_key": "",
+        "csolver_key": "",
+        "dchcaptcha_api_key": "",
+        "voidsolver_api_key": "",
+        "anticaptcha_api_key": "",
+        "kovasolver_api_key": "",
+        "max_retries": 5
+    },
+    "owners_ids": [
+        "584181828420632577"
+    ],
+    "admin_role_ids": [
+        "1501453032293007370"
+    ],
+    "token": "",
+    "key": "",
+    "panel_password": "",
+    "bot_client_id": "1480116833859276810",
+    "bot_client_secret": "",
+    "oauth_redirect_uri": "https://discord.com"
+}

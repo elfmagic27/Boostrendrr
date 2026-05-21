@@ -1,0 +1,17 @@
+colorama==0.4.6
+discord.py
+Flask==3.0.2
+httpx
+requests==2.31.0
+tls-client==1.0.1
+typing_extensions==4.10.0
+pymongo[srv]
+fastapi
+websocket-client
+uvicorn[standard]
+websockets
+aiofiles
+aiohttp
+discord-webhook
+python-multipart
+toml

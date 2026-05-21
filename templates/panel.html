@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boost Bot Panel</title>
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #16161e;
+    --card: #1e1e2e;
+    --border: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --text: #e2e2f0;
+    --muted: #6b6b8a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 64px;
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  header span { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 20px; }
+
+  .tabs {
+    display: flex; gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 28px;
+  }
+  .tab {
+    flex: 1; padding: 10px;
+    border: none; border-radius: 10px;
+    background: transparent; color: var(--muted);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(124,58,237,0.4);
+  }
+  .tab:not(.active):hover { background: var(--border); color: var(--text); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  .stock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stock-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stock-tile::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .stock-tile .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+  .stock-tile .value { font-size: 38px; font-weight: 800; margin: 6px 0 2px; background: linear-gradient(135deg, #fff, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stock-tile .sub { font-size: 13px; color: var(--muted); }
+  .stock-tile .badge {
+    position: absolute; top: 18px; right: 18px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 6px; padding: 3px 8px;
+    font-size: 11px; font-weight: 700; color: var(--accent2);
+  }
+
+  .btn-refresh {
+    width: 100%; margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px;
+    padding: 11px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-refresh:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-refresh svg { transition: transform 0.3s; }
+  .btn-refresh:hover svg { transform: rotate(180deg); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .form-group input {
+    width: 100%; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 14px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .form-group input::placeholder { color: var(--muted); }
+
+  .key-preview {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    margin-bottom: 16px; display: none;
+  }
+  .key-preview.visible { display: block; }
+  .key-preview .kp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .key-preview .kp-row:last-child { margin-bottom: 0; }
+  .key-preview .kp-label { color: var(--muted); }
+  .key-preview .kp-val { font-weight: 700; color: var(--accent2); }
+
+  .btn {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(124,58,237,0.45); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .alert {
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 14px; font-weight: 500;
+    margin-top: 16px; display: none; align-items: flex-start; gap: 10px;
+  }
+  .alert.visible { display: flex; }
+  .alert.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; }
+  .alert.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+  .alert.info { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.3); color: var(--accent2); }
+  .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    margin-top: 16px; display: none;
+  }
+  .result-card.visible { display: block; }
+  .result-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--accent2); }
+  .result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .r-label { color: var(--muted); }
+  .result-row .r-val { font-weight: 700; }
+  .r-val.green { color: var(--green); }
+  .r-val.red { color: var(--red); }
+  .r-val.yellow { color: var(--yellow); }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-bar {
+    height: 4px; background: var(--border);
+    border-radius: 4px; overflow: hidden;
+    margin-top: 12px; display: none;
+  }
+  .progress-bar.visible { display: block; }
+  .progress-fill {
+    height: 100%; width: 30%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    animation: progress 1.5s ease-in-out infinite;
+  }
+  @keyframes progress { 0%{width:10%;margin-left:0} 50%{width:40%;margin-left:30%} 100%{width:10%;margin-left:90%} }
+
+  footer { text-align: center; padding: 32px 20px; color: var(--muted); font-size: 12px; }
+
+  @media(max-width:560px) { .stock-grid{grid-template-columns:1fr} .stock-tile .value{font-size:28px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡</div>
+  <h1>Boost Bot Panel</h1>
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">Connecting...</span>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('stock', this)">📊  Stock Check</button>
+    <button class="tab" onclick="switchTab('redeem', this)">🔑  Key Redemption</button>
+  </div>
+
+  <!-- STOCK PANEL -->
+  <div class="panel active" id="panel-stock">
+    <div class="card">
+      <h2>Live Token Stock</h2>
+      <p>Real-time count of available boost tokens in inventory.</p>
+      <div class="stock-grid">
+        <div class="stock-tile">
+          <div class="badge">1 Month</div>
+          <div class="label">Tokens</div>
+          <div class="value" id="s1m-tokens">—</div>
+          <div class="sub" id="s1m-boosts">— boosts available</div>
+        </div>
+        <div class="stock-tile">
+          <div class="badge">3 Month</div>
+          <div class="label">Tokens</div>
+          <div class="value" id="s3m-tokens">—</div>
+          <div class="sub" id="s3m-boosts">— boosts available</div>
+        </div>
+      </div>
+      <button class="btn-refresh" onclick="loadStock(true)" id="refreshBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Refresh Stock
+      </button>
+    </div>
+  </div>
+
+  <!-- REDEEM PANEL -->
+  <div class="panel" id="panel-redeem">
+    <div class="card">
+      <h2>Redeem Boost Key</h2>
+      <p>Enter your key and the Discord server invite to start boosting.</p>
+
+      <div class="form-group">
+        <label>License Key</label>
+        <input type="text" id="inp-key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="onKeyInput()" />
+      </div>
+
+      <div class="key-preview" id="keyPreview">
+        <div class="kp-row"><span class="kp-label">Boosts</span><span class="kp-val" id="kp-boosts">—</span></div>
+        <div class="kp-row"><span class="kp-label">Duration</span><span class="kp-val" id="kp-month">—</span></div>
+        <div class="kp-row"><span class="kp-label">Status</span><span class="kp-val" id="kp-status">—</span></div>
+      </div>
+
+      <div class="form-group">
+        <label>Discord Server ID</label>
+        <input type="text" id="inp-guild" placeholder="e.g. 123456789012345678" />
+      </div>
+
+      <div class="form-group">
+        <label>Custom Nickname <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="inp-nick" placeholder="Leave blank to use default" />
+      </div>
+
+      <div class="form-group">
+        <label>Custom Bio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="inp-bio" placeholder="Leave blank to use default" />
+      </div>
+
+      <button class="btn" id="redeemBtn" onclick="submitRedeem()">Start Boosting</button>
+
+      <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
+
+      <div class="alert" id="redeemAlert">
+        <span class="alert-icon" id="alertIcon">ℹ️</span>
+        <span id="alertText"></span>
+      </div>
+
+      <div id="addBotBox" style="display:none;margin-top:16px;background:#1e1e2e;border:1px solid #7c3aed;border-radius:12px;padding:18px 20px;">
+        <div style="font-weight:700;font-size:14px;color:#e2e2f0;margin-bottom:6px;">⚠️ Bot Not In Your Server</div>
+        <div style="font-size:13px;color:#9c9cba;margin-bottom:14px;">Click the button below to add the bot to your server, then come back and redeem your key.</div>
+        <a id="addBotLink" href="#" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:700;font-size:13px;padding:10px 22px;border-radius:8px;text-decoration:none;">
+          ➕ Add Bot to Server
+        </a>
+        <div style="margin-top:10px;font-size:12px;color:#6b6b8a;">After adding the bot, wait a few seconds then try redeeming again. Your key has <b style="color:#22c55e">not</b> been used.</div>
+      </div>
+
+      <div class="result-card" id="resultCard">
+        <h3>✅ Boost Complete</h3>
+        <div class="result-row"><span class="r-label">Successful Boosts</span><span class="r-val green" id="res-success">—</span></div>
+        <div class="result-row"><span class="r-label">Failed Boosts</span><span class="r-val red" id="res-failed">—</span></div>
+        <div class="result-row"><span class="r-label">Captcha Blocks</span><span class="r-val yellow" id="res-captcha">—</span></div>
+        <div class="result-row"><span class="r-label">Time Taken</span><span class="r-val" id="res-time">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Boost Bot Panel &mdash; All data is live from the server.</footer>
+
+<script>
+let keyCheckTimer = null;
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'stock') loadStock();
+}
+
+async function loadStock(animate) {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/stock');
+    const d = await r.json();
+    document.getElementById('s1m-tokens').textContent = d['1m'].tokens;
+    document.getElementById('s1m-boosts').textContent = d['1m'].boosts + ' boosts available';
+    document.getElementById('s3m-tokens').textContent = d['3m'].tokens;
+    document.getElementById('s3m-boosts').textContent = d['3m'].boosts + ' boosts available';
+  } catch(e) {
+    document.getElementById('s1m-tokens').textContent = 'ERR';
+    document.getElementById('s3m-tokens').textContent = 'ERR';
+  } finally {
+    setTimeout(() => btn.disabled = false, animate ? 1000 : 0);
+  }
+}
+
+async function pingStatus() {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      document.getElementById('statusDot').style.background = '#22c55e';
+      document.getElementById('statusDot').style.boxShadow = '0 0 8px #22c55e';
+      document.getElementById('statusText').textContent = 'Bot Online';
+    }
+  } catch(e) {
+    document.getElementById('statusDot').style.background = '#ef4444';
+    document.getElementById('statusDot').style.boxShadow = '0 0 8px #ef4444';
+    document.getElementById('statusText').textContent = 'Offline';
+  }
+}
+
+function onKeyInput() {
+  clearTimeout(keyCheckTimer);
+  const key = document.getElementById('inp-key').value.trim();
+  document.getElementById('keyPreview').classList.remove('visible');
+  if (key.length < 10) return;
+  keyCheckTimer = setTimeout(() => checkKeyInfo(key), 600);
+}
+
+async function checkKeyInfo(key) {
+  try {
+    const r = await fetch('/api/key-info', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key})
+    });
+    const d = await r.json();
+    if (d.found) {
+      document.getElementById('kp-boosts').textContent = d.amount + ' boosts';
+      document.getElementById('kp-month').textContent = d.month + ' month';
+      document.getElementById('kp-status').textContent = '✅ Valid';
+      document.getElementById('keyPreview').classList.add('visible');
+    }
+  } catch(e) {}
+}
+
+function hideAddBot() { document.getElementById('addBotBox').style.display = 'none'; }
+function showAddBot(url) {
+  document.getElementById('addBotLink').href = url || '#';
+  document.getElementById('addBotBox').style.display = 'block';
+}
+
+async function submitRedeem() {
+  const key = document.getElementById('inp-key').value.trim();
+  const guild_id = document.getElementById('inp-guild').value.trim().replace(/\D/g,'');
+  const nick = document.getElementById('inp-nick').value.trim();
+  const bio  = document.getElementById('inp-bio').value.trim();
+
+  hideAlert(); hideResult(); hideAddBot();
+
+  if (!key || !guild_id) {
+    showAlert('error', '⚠️', 'Please enter both a key and a server Guild ID.');
+    return;
+  }
+
+  const btn = document.getElementById('redeemBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>&nbsp; Starting...';
+  showProgress();
+
+  try {
+    const r = await fetch('/api/redeem', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key, guild_id, nick: nick || undefined, bio: bio || undefined})
+    });
+    const d = await r.json();
+
+    if (!d.success) {
+      if (d.needs_bot_added && d.bot_invite_url) {
+        showAlert('error', '🤖', d.error || 'Bot is not in your server.');
+        showAddBot(d.bot_invite_url);
+      } else {
+        showAlert('error', '❌', d.error || 'Something went wrong.');
+      }
+      return;
+    }
+
+    showAlert('info', '⚡', 'Boosting in progress... This may take a minute.');
+    pollStatus(d.job_id);
+  } catch(e) {
+    showAlert('error', '❌', 'Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Start Boosting';
+  }
+}
+
+async function pollStatus(jobId) {
+  const interval = setInterval(async () => {
+    try {
+      const r = await fetch('/api/status/' + jobId);
+      const d = await r.json();
+      if (d.status === 'done') {
+        clearInterval(interval);
+        hideProgress();
+        hideAlert();
+        document.getElementById('res-success').textContent = d.success;
+        document.getElementById('res-failed').textContent = d.failed;
+        document.getElementById('res-captcha').textContent = d.captcha;
+        document.getElementById('res-time').textContent = d.time_taken + 's';
+        showResult();
+      }
+    } catch(e) { clearInterval(interval); hideProgress(); showAlert('error', '❌', 'Lost connection while polling status.'); }
+  }, 3000);
+}
+
+function showAlert(type, icon, text) {
+  const a = document.getElementById('redeemAlert');
+  a.className = 'alert ' + type + ' visible';
+  document.getElementById('alertIcon').textContent = icon;
+  document.getElementById('alertText').textContent = text;
+}
+function hideAlert() { document.getElementById('redeemAlert').classList.remove('visible'); }
+function showProgress() { document.getElementById('progressBar').classList.add('visible'); }
+function hideProgress() { document.getElementById('progressBar').classList.remove('visible'); }
+function showResult() { document.getElementById('resultCard').classList.add('visible'); }
+function hideResult() { document.getElementById('resultCard').classList.remove('visible'); }
+
+pingStatus();
+setInterval(pingStatus, 15000);
+loadStock();
+</script>
+</body>
+</html>

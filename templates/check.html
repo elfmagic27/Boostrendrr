@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Token Checker — Boost Bot</title>
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #16161e;
+    --card: #1e1e2e;
+    --border: #2a2a3e;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --text: #e2e2f0;
+    --muted: #6b6b8a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── Password Gate ── */
+  #gate {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(10,10,16,0.97);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #gate.hidden { display: none; }
+  .gate-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 36px;
+    width: 360px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .gate-icon { font-size: 40px; margin-bottom: 16px; }
+  .gate-box h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .gate-box p  { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .gate-input {
+    width: 100%; padding: 13px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 15px; outline: none; text-align: center;
+    letter-spacing: 2px; transition: border-color 0.2s;
+    margin-bottom: 14px;
+  }
+  .gate-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .gate-btn {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+  }
+  .gate-btn:hover { transform: translateY(-1px); }
+  .gate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .gate-error { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; align-items: center; gap: 16px; height: 64px;
+  }
+  .logo { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .back-link { color: var(--muted); font-size: 13px; text-decoration: none; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; transition: all 0.2s; }
+  .back-link:hover { border-color: var(--accent); color: var(--accent2); }
+  .lock-btn { color: var(--muted); font-size: 13px; cursor: pointer; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: none; transition: all 0.2s; }
+  .lock-btn:hover { border-color: var(--red); color: #f87171; }
+
+  /* ── Layout ── */
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+  .page-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; background: linear-gradient(135deg, #fff, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  code { color: var(--accent2); background: rgba(124,58,237,0.12); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .card-top h2 { font-size: 15px; font-weight: 700; }
+  .card-top p  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ── Input area ── */
+  .input-toolbar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+  .pill {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    cursor: default;
+  }
+  .pill.purple { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.35); color: var(--accent2); }
+
+  textarea {
+    width: 100%; height: 200px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 13px; font-family: 'Consolas', 'Monaco', monospace;
+    padding: 14px; outline: none; resize: vertical; line-height: 1.7;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  textarea::placeholder { color: var(--muted); }
+
+  /* ── File upload drop zone ── */
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 10px;
+    padding: 18px; text-align: center; cursor: pointer;
+    transition: all 0.2s; margin-top: 10px; color: var(--muted);
+    font-size: 13px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); color: var(--accent2); background: rgba(124,58,237,0.05); }
+  .drop-zone .dz-icon { font-size: 22px; margin-bottom: 6px; }
+  #fileInput { display: none; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    padding: 11px 22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 10px;
+    color: #fff; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.45); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-outline {
+    padding: 11px 20px; background: transparent;
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+
+  /* ── Progress ── */
+  .progress-wrap { margin-top: 16px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 6px; transition: width 0.4s ease; }
+
+  /* ── Summary tiles ── */
+  .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 22px; }
+  .summary-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 12px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .summary-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .t-total::before   { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .t-valid::before   { background: var(--green); }
+  .t-locked::before  { background: var(--orange); }
+  .t-invalid::before { background: var(--red); }
+  .t-nitro::before   { background: var(--yellow); }
+  .tile-val  { font-size: 26px; font-weight: 800; margin: 4px 0 2px; }
+  .tile-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+  .t-total   .tile-val { background: linear-gradient(135deg, #fff, var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .t-valid   .tile-val { color: var(--green); }
+  .t-locked  .tile-val { color: var(--orange); }
+  .t-invalid .tile-val { color: var(--red); }
+  .t-nitro   .tile-val { color: var(--yellow); }
+
+  /* ── Token list ── */
+  .results-card { display: none; }
+  .results-card.visible { display: block; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; margin-top: 20px; }
+  .section-header h3 { font-size: 13px; font-weight: 700; }
+  .sh-green  { color: var(--green); }
+  .sh-orange { color: var(--orange); }
+  .sh-red    { color: var(--red); }
+
+  .token-list { display: flex; flex-direction: column; gap: 8px; max-height: 440px; overflow-y: auto; padding-right: 4px; }
+  .token-list::-webkit-scrollbar { width: 4px; }
+  .token-list::-webkit-scrollbar-track { background: var(--surface); border-radius: 4px; }
+  .token-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .token-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .token-item.valid   { border-left: 3px solid var(--green); }
+  .token-item.locked  { border-left: 3px solid var(--orange); }
+  .token-item.invalid { border-left: 3px solid var(--red); }
+
+  .ti-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+  .ti-body  { flex: 1; min-width: 0; }
+  .ti-name  { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .ti-email { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-family: monospace; }
+  .ti-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; border: 1px solid;
+  }
+  .b-green  { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.3);  color: #4ade80; }
+  .b-red    { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.3);  color: #f87171; }
+  .b-yellow { background: rgba(234,179,8,0.1);  border-color: rgba(234,179,8,0.3);  color: #fbbf24; }
+  .b-orange { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.3); color: #fb923c; }
+  .b-purple { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.35); color: var(--accent2); }
+  .b-gray   { background: rgba(107,107,138,0.12); border-color: rgba(107,107,138,0.3); color: var(--muted); }
+
+  .ti-token { font-family: 'Consolas','Monaco',monospace; font-size: 11px; color: var(--muted); word-break: break-all; padding: 6px 10px; background: var(--card); border-radius: 6px; user-select: all; }
+  .ti-error { font-size: 12px; color: #fb923c; margin-top: 4px; }
+
+  /* ── Copy output ── */
+  .copy-area { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .copy-area label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 10px; }
+  .copy-output { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Consolas','Monaco',monospace; font-size: 12px; padding: 12px; resize: none; height: 110px; outline: none; line-height: 1.6; }
+
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align: center; padding: 32px 20px; color: var(--muted); font-size: 12px; }
+
+  @media(max-width:640px) {
+    .summary-grid { grid-template-columns: repeat(3,1fr); }
+    .btn-row { flex-direction: column; }
+    header { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-icon">🔒</div>
+    <h2>Token Checker</h2>
+    <p>Enter the checker password to continue.</p>
+    <input type="password" id="gateInput" class="gate-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')submitGate()" autofocus />
+    <button class="gate-btn" id="gateBtn" onclick="submitGate()">Unlock</button>
+    <div class="gate-error" id="gateError"></div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">🔍</div>
+  <h1>Token Checker</h1>
+  <div class="header-right">
+    <button class="lock-btn" onclick="lockChecker()" title="Lock checker">🔒 Lock</button>
+    <a href="/" class="back-link">← Panel</a>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-title">Token Checker</div>
+  <div class="page-sub">
+    Paste tokens — supports <code>token</code> or <code>email:password:token</code> — one per line, or upload a <code>.txt</code> file.
+  </div>
+
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <h2>Input Tokens</h2>
+        <p>Paste below or drag &amp; drop a .txt file.</p>
+      </div>
+      <span class="pill purple" id="lineCount">0 lines</span>
+    </div>
+
+    <div class="input-toolbar">
+      <span class="pill" id="statUnique" style="display:none">— unique</span>
+    </div>
+
+    <textarea id="tokenInput"
+      placeholder="Paste tokens here...&#10;&#10;Accepted formats:&#10;MTQ4MDExNjgzMzg1OTI3NjgxMA.GI8LIq.example&#10;email@example.com:password:MTQ4MDExNjgzMzg1OTI3NjgxMA.GI8LIq.example"
+      oninput="updateLineCount()"></textarea>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="dz-icon">📂</div>
+      <span id="dzText">Click to upload or drag &amp; drop a <strong>.txt</strong> file</span>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,text/plain" onchange="onFileSelect(event)" />
+
+    <div class="btn-row">
+      <button class="btn" id="checkBtn" onclick="startCheck()">
+        <span id="checkBtnInner">🔍 Check Tokens</span>
+      </button>
+      <button class="btn-outline" onclick="clearAll()">🗑 Clear</button>
+      <button class="btn-outline" id="dedupeBtn" onclick="dedupe()" style="display:none">✨ Dedupe</button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-info">
+        <span id="progressLabel">Checking tokens…</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card results-card" id="resultsCard">
+    <div class="summary-grid">
+      <div class="summary-tile t-total">
+        <div class="tile-label">Total</div>
+        <div class="tile-val" id="rTotal">0</div>
+      </div>
+      <div class="summary-tile t-valid">
+        <div class="tile-label">Valid</div>
+        <div class="tile-val" id="rValid">0</div>
+      </div>
+      <div class="summary-tile t-locked">
+        <div class="tile-label">Locked</div>
+        <div class="tile-val" id="rLocked">0</div>
+      </div>
+      <div class="summary-tile t-invalid">
+        <div class="tile-label">Invalid</div>
+        <div class="tile-val" id="rInvalid">0</div>
+      </div>
+      <div class="summary-tile t-nitro">
+        <div class="tile-label">Nitro</div>
+        <div class="tile-val" id="rNitro">0</div>
+      </div>
+    </div>
+
+    <!-- Valid -->
+    <div id="validSection" style="display:none">
+      <div class="section-header">
+        <h3 class="sh-green">✅ Working Tokens (<span id="validCount">0</span>)</h3>
+        <button class="btn-outline btn-sm" id="copyBtn" onclick="copyValid()">📋 Copy All</button>
+      </div>
+      <div class="token-list" id="validList"></div>
+      <div class="copy-area">
+        <label>Working tokens — ready to copy</label>
+        <textarea class="copy-output" id="copyOutput" readonly></textarea>
+      </div>
+    </div>
+
+    <!-- Locked -->
+    <div id="lockedSection" style="display:none">
+      <div class="section-header" style="margin-top:24px">
+        <h3 class="sh-orange">🔒 Locked / Needs Action (<span id="lockedCount">0</span>)</h3>
+      </div>
+      <div class="token-list" id="lockedList"></div>
+    </div>
+
+    <!-- Invalid -->
+    <div id="invalidSection" style="display:none">
+      <div class="section-header" style="margin-top:24px">
+        <h3 class="sh-red">❌ Invalid / Dead (<span id="invalidCount">0</span>)</h3>
+      </div>
+      <div class="token-list" id="invalidList"></div>
+    </div>
+  </div>
+</div>
+
+<footer>Token Checker &mdash; Results are live from Discord API.</footer>
+
+<script>
+let sessionPw = sessionStorage.getItem('checker_pw') || '';
+let checking  = false;
+
+// ── Gate ──────────────────────────────────────────────────────
+async function submitGate() {
+  const pw  = document.getElementById('gateInput').value;
+  const btn = document.getElementById('gateBtn');
+  const err = document.getElementById('gateError');
+  if (!pw) { err.textContent = 'Enter a password.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/check-auth', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: pw})
+    });
+    if (r.ok) {
+      sessionPw = pw;
+      sessionStorage.setItem('checker_pw', pw);
+      document.getElementById('gate').classList.add('hidden');
+    } else {
+      err.textContent = '❌ Wrong password. Try again.';
+      document.getElementById('gateInput').value = '';
+      document.getElementById('gateInput').focus();
+    }
+  } catch(e) {
+    err.textContent = 'Network error. Retry.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Unlock';
+}
+
+function lockChecker() {
+  sessionPw = '';
+  sessionStorage.removeItem('checker_pw');
+  document.getElementById('gate').classList.remove('hidden');
+  document.getElementById('gateInput').value = '';
+  document.getElementById('gateInput').focus();
+}
+
+// Auto-unlock if pw in session
+(async () => {
+  if (sessionPw) {
+    try {
+      const r = await fetch('/api/check-auth', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({password: sessionPw})
+      });
+      if (r.ok) { document.getElementById('gate').classList.add('hidden'); return; }
+    } catch(e) {}
+    sessionPw = '';
+    sessionStorage.removeItem('checker_pw');
+  }
+})();
+
+// ── File upload ───────────────────────────────────────────────
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('dropZone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+}
+function onFileSelect(e) { const file = e.target.files[0]; if (file) readFile(file); }
+function readFile(file) {
+  if (!file.name.endsWith('.txt') && file.type !== 'text/plain') {
+    alert('Please upload a .txt file.'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const existing = document.getElementById('tokenInput').value.trim();
+    const incoming = e.target.result.trim();
+    document.getElementById('tokenInput').value = existing ? existing + '\n' + incoming : incoming;
+    updateLineCount();
+    const dzText = document.getElementById('dzText');
+    dzText.textContent = '';
+    const strong = document.createElement('strong');
+    strong.textContent = file.name;
+    dzText.append('✅ ', strong, ' loaded — click to replace');
+  };
+  reader.readAsText(file);
+}
+
+// ── Input helpers ─────────────────────────────────────────────
+function getLines() {
+  return document.getElementById('tokenInput').value
+    .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+}
+
+function updateLineCount() {
+  const lines  = getLines();
+  const unique = [...new Set(lines)].length;
+  document.getElementById('lineCount').textContent = lines.length + ' lines';
+  const uq = document.getElementById('statUnique');
+  if (lines.length > 0) {
+    uq.style.display = 'inline-block';
+    uq.textContent = unique + ' unique';
+    document.getElementById('dedupeBtn').style.display = lines.length !== unique ? 'flex' : 'none';
+  } else {
+    uq.style.display = 'none';
+    document.getElementById('dedupeBtn').style.display = 'none';
+  }
+}
+
+function dedupe() {
+  const lines = [...new Set(getLines())];
+  document.getElementById('tokenInput').value = lines.join('\n');
+  updateLineCount();
+}
+
+function clearAll() {
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('resultsCard').classList.remove('visible');
+  document.getElementById('dzText').innerHTML = 'Click to upload or drag &amp; drop a <strong>.txt</strong> file';
+  document.getElementById('fileInput').value = '';
+  updateLineCount();
+}
+
+// ── Checker ───────────────────────────────────────────────────
+async function startCheck() {
+  if (checking) return;
+  const lines = getLines();
+  if (!lines.length) return;
+  checking = true;
+
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true;
+  document.getElementById('checkBtnInner').innerHTML = '<span class="spinner"></span> Checking…';
+
+  document.getElementById('resultsCard').classList.remove('visible');
+  ['validSection','lockedSection','invalidSection'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['validList','lockedList','invalidList'].forEach(id => document.getElementById(id).innerHTML = '');
+  document.getElementById('copyOutput').value = '';
+
+  const pw = document.getElementById('progressWrap');
+  pw.classList.add('visible');
+  setProgress(0, lines.length);
+
+  try {
+    const resp = await fetch('/api/check-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Checker-Auth': sessionPw },
+      body: JSON.stringify({ tokens: lines })
+    });
+    if (resp.status === 401) {
+      lockChecker();
+      return;
+    }
+    if (!resp.ok) throw new Error('Server error ' + resp.status);
+    const results = await resp.json();
+    setProgress(lines.length, lines.length);
+    renderResults(results, lines.length);
+  } catch(e) {
+    document.getElementById('progressLabel').textContent = '❌ ' + e.message;
+  } finally {
+    checking = false;
+    btn.disabled = false;
+    document.getElementById('checkBtnInner').textContent = '🔍 Check Tokens';
+    pw.classList.remove('visible');
+  }
+}
+
+function setProgress(done, total) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+  document.getElementById('progressLabel').textContent = done === total
+    ? 'Done! Rendering results…'
+    : `Checking ${done} / ${total} tokens…`;
+}
+
+function renderResults(results, total) {
+  const valid   = results.filter(r => r.valid);
+  const locked  = results.filter(r => !r.valid && r.error_type === 'locked');
+  const invalid = results.filter(r => !r.valid && r.error_type !== 'locked');
+  const nitro   = results.filter(r => r.nitro);
+
+  document.getElementById('rTotal').textContent   = total;
+  document.getElementById('rValid').textContent   = valid.length;
+  document.getElementById('rLocked').textContent  = locked.length;
+  document.getElementById('rInvalid').textContent = invalid.length;
+  document.getElementById('rNitro').textContent   = nitro.length;
+
+  const copyLines = [];
+  const vl = document.getElementById('validList');
+  valid.forEach(r => {
+    copyLines.push(r.original_line);
+    vl.insertAdjacentHTML('beforeend', buildValidItem(r));
+  });
+  document.getElementById('copyOutput').value = copyLines.join('\n');
+  document.getElementById('validCount').textContent  = valid.length;
+  document.getElementById('lockedCount').textContent = locked.length;
+  document.getElementById('invalidCount').textContent = invalid.length;
+
+  const ll = document.getElementById('lockedList');
+  locked.forEach(r => ll.insertAdjacentHTML('beforeend', buildBadItem(r, 'locked')));
+
+  const il = document.getElementById('invalidList');
+  invalid.forEach(r => il.insertAdjacentHTML('beforeend', buildBadItem(r, 'invalid')));
+
+  if (valid.length)   document.getElementById('validSection').style.display   = 'block';
+  if (locked.length)  document.getElementById('lockedSection').style.display  = 'block';
+  if (invalid.length) document.getElementById('invalidSection').style.display = 'block';
+
+  document.getElementById('resultsCard').classList.add('visible');
+}
+
+function buildValidItem(r) {
+  const emailHtml = r.email ? `<div class="ti-email">📧 ${esc(r.email)}</div>` : '';
+  const nitBadge  = r.nitro
+    ? `<span class="badge b-yellow">🟡 Nitro</span>`
+    : `<span class="badge b-gray">No Nitro</span>`;
+  const boostBadge = r.boost_slots > 0
+    ? `<span class="badge b-green">⚡ ${r.boost_slots} Boost Slot${r.boost_slots !== 1 ? 's' : ''}</span>`
+    : `<span class="badge b-gray">No Boost Slots</span>`;
+  const verBadge  = r.verified ? `<span class="badge b-green">✉️ Verified</span>` : `<span class="badge b-red">✉️ Unverified</span>`;
+  const phoneBadge = r.phone   ? `<span class="badge b-green">📱 Phone</span>` : '';
+
+  let extraHtml = '';
+
+  if (r.nitro_expires) {
+    const exp = new Date(r.nitro_expires);
+    const now = new Date();
+    const diffMs = exp - now;
+    let timeStr;
+    if (diffMs <= 0) {
+      timeStr = 'Expired';
+    } else {
+      const days = Math.floor(diffMs / 86400000);
+      const hrs  = Math.floor((diffMs % 86400000) / 3600000);
+      timeStr = days > 0 ? `${days}d ${hrs}h remaining` : `${hrs}h remaining`;
+    }
+    extraHtml += `<div style="font-size:11px;color:#fbbf24;margin-top:4px">⏱️ Nitro expires: ${esc(exp.toLocaleDateString())} (${esc(timeStr)})</div>`;
+  }
+
+  if (r.boosted_servers && r.boosted_servers.length > 0) {
+    const serverLines = r.boosted_servers.map(s => {
+      const name = s.guild_name ? esc(s.guild_name) : `ID: ${esc(s.guild_id || '?')}`;
+      let coolStr = '';
+      if (s.cooldown_ends_at) {
+        const cd = new Date(s.cooldown_ends_at);
+        coolStr = ` <span style="color:var(--muted)">(slot free ${esc(cd.toLocaleDateString())})</span>`;
+      }
+      return `<span style="color:#a78bfa">🏰 ${name}</span>${coolStr}`;
+    }).join(', ');
+    extraHtml += `<div style="font-size:11px;margin-top:4px">Boosting: ${serverLines}</div>`;
+  }
+
+  return `<div class="token-item valid">
+    <div class="ti-icon">✅</div>
+    <div class="ti-body">
+      <div class="ti-name">${esc(r.username || 'Unknown User')}</div>
+      ${emailHtml}
+      <div class="ti-badges">${nitBadge}${boostBadge}${verBadge}${phoneBadge}</div>
+      ${extraHtml}
+      <div class="ti-token">${esc(r.original_line)}</div>
+    </div>
+  </div>`;
+}
+
+function buildBadItem(r, cls) {
+  const icon  = cls === 'locked' ? '🔒' : '❌';
+  const errCls = cls === 'locked' ? 'b-orange' : 'b-red';
+  const emailHtml = r.email ? `<div class="ti-email">📧 ${esc(r.email)}</div>` : '';
+  return `<div class="token-item ${cls}">
+    <div class="ti-icon">${icon}</div>
+    <div class="ti-body">
+      <div class="ti-name" style="color:var(--muted);font-size:12px">${esc(truncTok(r.original_line))}</div>
+      ${emailHtml}
+      ${r.error ? `<div class="ti-badges"><span class="badge ${errCls}">${esc(r.error)}</span></div>` : ''}
+    </div>
+  </div>`;
+}
+
+function truncTok(line) {
+  const p = line.split(':');
+  if (p.length >= 3) return p[0] + ':' + p[1] + ':' + p[2].slice(0, 18) + '…';
+  return line.length > 32 ? line.slice(0, 28) + '…' : line;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copyValid() {
+  const ta = document.getElementById('copyOutput');
+  ta.select(); ta.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy All', 2000);
+  }).catch(() => document.execCommand('copy'));
+}
+
+updateLineCount();
+</script>
+</body>
+</html>

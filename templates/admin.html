@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Boost Bot</title>
+<style>
+  :root {
+    --bg: #0e0e12; --surface: #16161e; --card: #1e1e2e; --border: #2a2a3e;
+    --accent: #7c3aed; --accent2: #a855f7; --green: #22c55e; --red: #ef4444;
+    --yellow: #eab308; --blue: #3b82f6; --text: #e2e2f0; --muted: #6b6b8a; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── Login ── */
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-box .logo { width: 52px; height: 52px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px; }
+  .login-box h1 { text-align: center; font-size: 20px; margin-bottom: 6px; }
+  .login-box p { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .login-err { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+  .login-err.show { display: block; }
+
+  /* ── Shared ── */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; height: 60px; gap: 14px; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .badge-admin { background: rgba(124,58,237,.2); border: 1px solid rgba(124,58,237,.4); color: var(--accent2); border-radius: 6px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
+  .logout-btn { margin-left: auto; background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; transition: all .2s; }
+  .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .layout { display: flex; min-height: calc(100vh - 60px); }
+  .sidebar { width: 210px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 10px; flex-shrink: 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--muted); transition: all .15s; margin-bottom: 2px; border: none; background: transparent; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: rgba(124,58,237,.15); color: var(--accent2); }
+  .nav-sep { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 14px 12px 6px; }
+
+  .content { flex: 1; padding: 28px; overflow-y: auto; }
+  .page { display: none; } .page.active { display: block; }
+
+  .page-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; }
+  .stat-tile::before { content:''; position:absolute; top:0;left:0;right:0;height:3px; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+  .stat-tile .s-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .stat-tile .s-val { font-size: 32px; font-weight: 800; margin: 6px 0 0; background: linear-gradient(135deg,#fff,var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── Form ── */
+  .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 12px; margin-bottom: 14px; }
+  .fg { display: flex; flex-direction: column; gap: 6px; }
+  .fg label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .fg input, .fg select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 10px 12px; font-size: 14px; outline: none; transition: border-color .2s; }
+  .fg input:focus, .fg select:focus { border-color: var(--accent); }
+  .fg select option { background: var(--surface); }
+
+  /* ── Buttons ── */
+  .btn { padding: 10px 20px; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-primary { background: linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; box-shadow: 0 3px 14px rgba(124,58,237,.3); }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 5px 18px rgba(124,58,237,.45); }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .btn-danger { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+  .btn-danger:hover { background: rgba(239,68,68,.22); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 7px; }
+  .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* ── Table ── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(42,42,62,.5); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(124,58,237,.05); }
+  .key-cell { font-family: monospace; font-size: 12px; color: var(--accent2); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip { display: inline-block; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+  .chip-1m { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .chip-3m { background: rgba(168,85,247,.15); color: #c084fc; }
+  .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  /* ── Upload ── */
+  .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 36px; text-align: center; cursor: pointer; transition: all .2s; }
+  .drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: rgba(124,58,237,.05); }
+  .drop-zone p { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .drop-zone .icon { font-size: 36px; }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 999; }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.ok { border-left: 3px solid var(--green); }
+  #toast.err { border-left: 3px solid var(--red); }
+
+  .spinner { width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div class="login-wrap" id="loginPage">
+  <div class="login-box">
+    <div class="logo">🔐</div>
+    <h1>Admin Login</h1>
+    <p>Enter your panel password to continue.</p>
+    <div class="login-err" id="loginErr">Incorrect password. Try again.</div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Password</label>
+      <input type="password" id="pwInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()" id="loginBtn">Login</button>
+  </div>
+</div>
+
+<!-- ── ADMIN PANEL ── -->
+<div id="adminPanel" style="display:none">
+  <header>
+    <span style="font-size:20px">⚡</span>
+    <h1>Boost Bot</h1>
+    <span class="badge-admin">ADMIN</span>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </header>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-sep">Overview</div>
+      <button class="nav-item active" onclick="switchPage('overview',this)">📊 Dashboard</button>
+      <div class="nav-sep">Keys</div>
+      <button class="nav-item" onclick="switchPage('keys',this)">🔑 Active Keys</button>
+      <button class="nav-item" onclick="switchPage('used',this)">✅ Used Keys</button>
+      <button class="nav-item" onclick="switchPage('generate',this)">➕ Generate Keys</button>
+      <div class="nav-sep">Tokens</div>
+      <button class="nav-item" onclick="switchPage('upload',this)">📤 Upload Tokens</button>
+      <button class="nav-item" onclick="switchPage('stock',this)">📦 Token Stock</button>
+      <div class="nav-sep">Tools</div>
+      <button class="nav-item" onclick="switchPage('manualboost',this)">⚡ Manual Boost</button>
+      <button class="nav-item" onclick="switchPage('testtoken',this)">🧪 Test Token</button>
+      <button class="nav-item" onclick="switchPage('bulktest',this)">📋 Bulk Test</button>
+      <button class="nav-item" onclick="switchPage('oauth',this)">🔗 OAuth Status</button>
+      <div class="nav-sep">Settings</div>
+      <button class="nav-item" onclick="switchPage('secrets',this);loadSecrets()">🔒 Secrets</button>
+    </nav>
+
+    <div class="content">
+
+      <!-- OVERVIEW -->
+      <div class="page active" id="page-overview">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Live overview of your boost bot.</div>
+        <div class="stats-row">
+          <div class="stat-tile"><div class="s-label">Active Keys</div><div class="s-val" id="ov-keys">—</div></div>
+          <div class="stat-tile"><div class="s-label">Used Keys</div><div class="s-val" id="ov-used">—</div></div>
+          <div class="stat-tile"><div class="s-label">1M Tokens</div><div class="s-val" id="ov-1m">—</div></div>
+          <div class="stat-tile"><div class="s-label">3M Tokens</div><div class="s-val" id="ov-3m">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Recent Active Keys</div>
+          <div class="tbl-wrap"><table id="ov-keys-table">
+            <thead><tr><th>Key</th><th>Month</th><th>Boosts</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ACTIVE KEYS -->
+      <div class="page" id="page-keys">
+        <div class="page-title">Active Keys</div>
+        <div class="page-sub">All unredeemed keys currently in the system.</div>
+        <div class="card">
+          <div class="card-title">
+            Keys
+            <button class="btn btn-danger btn-sm" onclick="deleteAllKeys()">🗑 Delete All</button>
+          </div>
+          <div class="tbl-wrap"><table id="keys-table">
+            <thead><tr><th>Key</th><th>Month</th><th>Boosts</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- USED KEYS -->
+      <div class="page" id="page-used">
+        <div class="page-title">Used Keys</div>
+        <div class="page-sub">History of all redeemed keys.</div>
+        <div class="card">
+          <div class="card-title">
+            History
+            <button class="btn btn-danger btn-sm" onclick="clearUsedKeys()">🗑 Clear History</button>
+          </div>
+          <div class="tbl-wrap"><table id="used-table">
+            <thead><tr><th>Key</th><th>Month</th><th>Boosts</th><th>Guild ID</th><th>Success</th><th>Failed</th><th>Time</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- GENERATE -->
+      <div class="page" id="page-generate">
+        <div class="page-title">Generate Keys</div>
+        <div class="page-sub">Create new license keys for customers.</div>
+        <div class="card">
+          <div class="card-title">New Keys</div>
+          <div class="form-row">
+            <div class="fg"><label>Duration</label>
+              <select id="gen-month"><option value="1">1 Month</option><option value="3">3 Months</option></select>
+            </div>
+            <div class="fg"><label>Boost Amount</label>
+              <input type="number" id="gen-amount" value="2" min="2" step="2" placeholder="e.g. 10" />
+            </div>
+            <div class="fg"><label>Quantity</label>
+              <input type="number" id="gen-qty" value="1" min="1" placeholder="How many keys" />
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="generateKeys()" id="genBtn">Generate Keys</button>
+        </div>
+        <div class="card" id="gen-result-card" style="display:none">
+          <div class="card-title">Generated Keys</div>
+          <div class="tbl-wrap"><table id="gen-table">
+            <thead><tr><th>Key</th><th>Month</th><th>Boosts</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- UPLOAD TOKENS -->
+      <div class="page" id="page-upload">
+        <div class="page-title">Upload Tokens</div>
+        <div class="page-sub">Add new boost tokens to the stock. One token per line.</div>
+        <div class="card">
+          <div class="card-title">1-Month Tokens (data/1m.txt)</div>
+          <div class="drop-zone" id="dz1m" onclick="document.getElementById('f1m').click()" ondragover="dzDrag(event,'dz1m')" ondragleave="dzLeave('dz1m')" ondrop="dzDrop(event,'1m')">
+            <div class="icon">📁</div>
+            <p>Click to browse or drag & drop a .txt file</p>
+            <p style="font-size:12px;margin-top:4px" id="dz1m-name"></p>
+          </div>
+          <input type="file" id="f1m" accept=".txt" onchange="fileSelected('1m',this)" />
+          <button class="btn btn-primary" style="margin-top:14px" onclick="uploadTokens('1m')" id="up1m-btn" disabled>Upload to 1M Stock</button>
+        </div>
+        <div class="card">
+          <div class="card-title">3-Month Tokens (data/3m.txt)</div>
+          <div class="drop-zone" id="dz3m" onclick="document.getElementById('f3m').click()" ondragover="dzDrag(event,'dz3m')" ondragleave="dzLeave('dz3m')" ondrop="dzDrop(event,'3m')">
+            <div class="icon">📁</div>
+            <p>Click to browse or drag & drop a .txt file</p>
+            <p style="font-size:12px;margin-top:4px" id="dz3m-name"></p>
+          </div>
+          <input type="file" id="f3m" accept=".txt" onchange="fileSelected('3m',this)" />
+          <button class="btn btn-primary" style="margin-top:14px" onclick="uploadTokens('3m')" id="up3m-btn" disabled>Upload to 3M Stock</button>
+        </div>
+      </div>
+
+      <!-- TEST TOKEN -->
+      <div class="page" id="page-testtoken">
+        <div class="page-title">Test Token</div>
+        <div class="page-sub">Verify a token, check Nitro status, and optionally join a server. Guild ID is optional — leave blank to just verify &amp; check Nitro.</div>
+        <div class="card">
+          <div class="card-title">Token Input</div>
+          <div class="fg" style="margin-bottom:12px">
+            <label>Token <span style="color:var(--muted);font-weight:400">(plain token or email:password:token)</span></label>
+            <input type="text" id="tt-token" placeholder="MTQ4MDEx... or email@x.com:pass:MTQ4MDEx..." style="font-family:monospace;font-size:12px" />
+          </div>
+          <div class="fg" style="margin-bottom:16px">
+            <label>Server Guild ID <span style="color:var(--muted);font-weight:400">(optional — needed to join &amp; boost)</span></label>
+            <input type="text" id="tt-guild" placeholder="e.g. 123456789012345678 — leave blank to only verify token" />
+          </div>
+          <button class="btn btn-primary" onclick="runTokenTest()" id="tt-btn">🧪 Run Test</button>
+        </div>
+
+        <div class="card" id="tt-result-card" style="display:none">
+          <div class="card-title" id="tt-result-title">Result</div>
+
+          <!-- Account summary row -->
+          <div id="tt-account-row" style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap"></div>
+
+          <!-- Step-by-step pipeline -->
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px">Steps</div>
+          <div id="tt-steps"></div>
+        </div>
+      </div>
+
+      <!-- BULK TEST -->
+      <div class="page" id="page-bulktest">
+        <div class="page-title">Bulk Test Tokens</div>
+        <div class="page-sub">Paste up to 100 tokens (one per line). Supports plain tokens and <code style="background:var(--surface);border-radius:4px;padding:1px 6px;font-size:12px">email:password:token</code> format. Up to 10 checked in parallel.</div>
+
+        <div class="card">
+          <div class="card-title">Input</div>
+          <div class="fg" style="margin-bottom:12px">
+            <label>Tokens <span style="color:var(--muted);font-weight:400">(one per line, max 100)</span></label>
+            <textarea id="bt-tokens" rows="8" placeholder="MTQ4MDEx...&#10;email@x.com:pass:MTQ4MDEx...&#10;..." style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 12px;font-size:12px;font-family:monospace;resize:vertical;outline:none;width:100%;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+          </div>
+          <div class="fg" style="margin-bottom:16px">
+            <label>Server Guild ID <span style="color:var(--muted);font-weight:400">(optional — tokens will join if provided)</span></label>
+            <input type="text" id="bt-guild" placeholder="Leave blank to only verify + check Nitro" />
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="runBulkTest()" id="bt-btn">📋 Run Bulk Test</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('bt-tokens').value='';document.getElementById('bt-result-card').style.display='none'">Clear</button>
+            <span id="bt-progress" style="font-size:13px;color:var(--muted);margin-left:4px"></span>
+          </div>
+        </div>
+
+        <div id="bt-result-card" style="display:none">
+          <!-- Summary tiles -->
+          <div class="stats-row" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:20px" id="bt-summary-row"></div>
+
+          <!-- Filter + copy bar -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-right:4px">Filter:</span>
+            <button class="btn btn-sm btn-ghost bt-filter active" data-filter="all" onclick="btFilter('all',this)">All</button>
+            <button class="btn btn-sm btn-ghost bt-filter" data-filter="nitro" onclick="btFilter('nitro',this)">🟡 Nitro</button>
+            <button class="btn btn-sm btn-ghost bt-filter" data-filter="valid" onclick="btFilter('valid',this)">✅ Valid</button>
+            <button class="btn btn-sm btn-ghost bt-filter" data-filter="invalid" onclick="btFilter('invalid',this)">❌ Invalid</button>
+            <button class="btn btn-sm btn-ghost bt-filter" data-filter="locked" onclick="btFilter('locked',this)">🔒 Locked</button>
+            <span style="flex:1"></span>
+            <button class="btn btn-sm btn-ghost" onclick="btCopy('all')" title="Copy all valid tokens">📋 Copy Valid</button>
+            <button class="btn btn-sm btn-ghost" onclick="btCopy('nitro')" title="Copy nitro tokens">⚡ Copy Nitro</button>
+            <button class="btn btn-sm btn-ghost" onclick="btCopy('invalid')" title="Copy invalid tokens">🗑 Copy Invalid</button>
+          </div>
+
+          <!-- Results table -->
+          <div class="card" style="padding:0;overflow:hidden">
+            <div class="tbl-wrap">
+              <table id="bt-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px">#</th>
+                    <th>Status</th>
+                    <th>Token</th>
+                    <th>Username</th>
+                    <th>Nitro</th>
+                    <th>Slots</th>
+                    <th>OAuth</th>
+                    <th>Joined</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody id="bt-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECRETS -->
+      <div class="page" id="page-secrets">
+        <div class="page-title">🔒 Secrets & Config</div>
+        <div class="page-sub">Store sensitive keys here — saved to <code style="background:var(--surface);border-radius:4px;padding:1px 6px;font-size:12px">config/secrets.json</code> (gitignored). Takes priority over config.json. Env vars always win.</div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;margin-bottom:3px">Priority order</div>
+              <div style="font-size:12px;color:var(--muted)">
+                <span style="color:var(--green);font-weight:700">1. Env Vars</span> (Replit Secrets tab)
+                &nbsp;→&nbsp;
+                <span style="color:var(--accent2);font-weight:700">2. This Page</span> (secrets.json)
+                &nbsp;→&nbsp;
+                <span style="color:var(--muted);font-weight:700">3. config.json</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadSecrets()" id="sec-refresh-btn">🔄 Refresh</button>
+          </div>
+
+          <div id="sec-fields-container">
+            <div class="empty-state">Loading…</div>
+          </div>
+
+          <div style="margin-top:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveSecrets()" id="sec-save-btn" disabled>💾 Save Changes</button>
+            <span id="sec-msg" style="font-size:13px;color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <div class="card" style="background:rgba(234,179,8,.05);border-color:rgba(234,179,8,.3)">
+          <div style="font-size:13px;font-weight:700;color:var(--yellow);margin-bottom:8px">⚠️ After saving</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">
+            Most settings (panel password, webhook URL, captcha keys) apply <strong style="color:var(--text)">immediately</strong> without restart.<br>
+            The <strong style="color:var(--text)">Bot Token</strong> requires a restart to reconnect to Discord.
+          </div>
+          <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="restart-btn" onclick="restartBot()" style="border-color:rgba(239,68,68,.4);color:#f87171">🔄 Restart Bot</button>
+            <span id="restart-msg" style="font-size:12px;color:var(--muted)">Reconnects to Discord — use after changing the Bot Token.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OAUTH STATUS -->
+      <div class="page" id="page-oauth">
+        <div class="page-title">OAuth Status</div>
+        <div class="page-sub">Shows which stock tokens have a valid cached OAuth token needed for boosting.</div>
+
+        <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-tile">
+            <div class="s-label">Total Tokens</div>
+            <div class="s-val" id="oa-total">—</div>
+          </div>
+          <div class="stat-tile" style="--accent:#22c55e;--accent2:#4ade80">
+            <div class="s-label" style="color:#4ade80">✅ Authorized</div>
+            <div class="s-val" id="oa-authed" style="background:linear-gradient(135deg,#fff,#4ade80);-webkit-background-clip:text;-webkit-text-fill-color:transparent">—</div>
+          </div>
+          <div class="stat-tile">
+            <div class="s-label" style="color:#f87171">❌ Missing OAuth</div>
+            <div class="s-val" id="oa-missing" style="background:linear-gradient(135deg,#fff,#f87171);-webkit-background-clip:text;-webkit-text-fill-color:transparent">—</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="loadOAuthStatus()">🔄 Refresh</button>
+            <button class="btn btn-primary" id="reauthBtn" onclick="triggerReauth()">⚡ Re-Authorize Missing</button>
+            <span id="oa-msg" style="font-size:13px;color:var(--muted)"></span>
+          </div>
+        </div>
+
+        <!-- 1M tokens -->
+        <div class="card" id="oa-card-1m">
+          <div class="card-title">
+            1-Month Tokens
+            <span id="oa-1m-summary" style="font-size:12px;font-weight:400;color:var(--muted)"></span>
+          </div>
+          <div class="tbl-wrap">
+            <table id="oa-table-1m">
+              <thead><tr><th>Token</th><th>User ID</th><th>OAuth</th><th>Expires In</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3M tokens -->
+        <div class="card" id="oa-card-3m">
+          <div class="card-title">
+            3-Month Tokens
+            <span id="oa-3m-summary" style="font-size:12px;font-weight:400;color:var(--muted)"></span>
+          </div>
+          <div class="tbl-wrap">
+            <table id="oa-table-3m">
+              <thead><tr><th>Token</th><th>User ID</th><th>OAuth</th><th>Expires In</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUAL BOOST -->
+      <div class="page" id="page-manualboost">
+        <div class="page-title">Manual Boost</div>
+        <div class="page-sub">Trigger a server boost directly from the admin panel using stock tokens.</div>
+
+        <div class="card" style="max-width:540px">
+          <div class="form-row">
+            <label class="form-label">Server Invite / Guild ID</label>
+            <input class="form-input" id="mb-invite" placeholder="discord.gg/abc or server ID" />
+          </div>
+          <div class="form-row" style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label class="form-label">Months</label>
+              <select class="form-input" id="mb-months">
+                <option value="1">1 Month</option>
+                <option value="3">3 Months</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <label class="form-label">Boosts (even number)</label>
+              <input class="form-input" id="mb-amount" type="number" min="2" step="2" value="2" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Custom Nickname <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input class="form-input" id="mb-nick" placeholder="Leave blank for default" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Custom Bio <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input class="form-input" id="mb-bio" placeholder="Leave blank for default" />
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+            <button class="btn btn-primary" id="mbBtn" onclick="submitManualBoost()">⚡ Start Boost</button>
+            <span id="mb-msg" style="font-size:13px;color:var(--muted)"></span>
+          </div>
+          <div id="mb-result" style="display:none;margin-top:16px;padding:14px;border-radius:10px;font-size:13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)"></div>
+        </div>
+      </div>
+
+      <!-- STOCK -->
+      <div class="page" id="page-stock">
+        <div class="page-title">Token Stock</div>
+        <div class="page-sub">Live view of available tokens in each stock file.</div>
+        <div class="stats-row">
+          <div class="stat-tile"><div class="s-label">1M Tokens</div><div class="s-val" id="st-1m">—</div></div>
+          <div class="stat-tile"><div class="s-label">1M Boosts</div><div class="s-val" id="st-1m-b">—</div></div>
+          <div class="stat-tile"><div class="s-label">3M Tokens</div><div class="s-val" id="st-3m">—</div></div>
+          <div class="stat-tile"><div class="s-label">3M Boosts</div><div class="s-val" id="st-3m-b">—</div></div>
+        </div>
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <button class="btn btn-ghost" onclick="loadStock()">🔄 Refresh</button>
+          <button class="btn btn-danger" onclick="clearStock('1m')">🗑 Clear 1M Stock</button>
+          <button class="btn btn-danger" onclick="clearStock('3m')">🗑 Clear 3M Stock</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let _token = localStorage.getItem('admin_token') || '';
+let _selectedFiles = {};
+
+// ── Auth ──
+async function doLogin() {
+  const pw = document.getElementById('pwInput').value;
+  const btn = document.getElementById('loginBtn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/admin/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw})});
+    const d = await r.json();
+    if (d.token) {
+      _token = d.token;
+      localStorage.setItem('admin_token', _token);
+      showAdmin();
+    } else {
+      document.getElementById('loginErr').classList.add('show');
+    }
+  } catch(e) { document.getElementById('loginErr').classList.add('show'); }
+  btn.innerHTML = 'Login'; btn.disabled = false;
+}
+function doLogout() {
+  _token = ''; localStorage.removeItem('admin_token');
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+}
+function headers() { return {'Content-Type':'application/json','Authorization':'Bearer '+_token}; }
+async function verifyToken() {
+  if (!_token) return false;
+  try {
+    const r = await fetch('/admin/verify', {headers:{'Authorization':'Bearer '+_token}});
+    return r.ok;
+  } catch { return false; }
+}
+async function showAdmin() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  loadOverview(); loadKeys(); loadUsedKeys(); loadStock();
+}
+
+// ── Navigation ──
+function switchPage(name, el) {
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='keys') loadKeys();
+  if(name==='used') loadUsedKeys();
+  if(name==='stock') loadStock();
+  if(name==='overview') loadOverview();
+  if(name==='oauth') loadOAuthStatus();
+  if(name==='manualboost') { document.getElementById('mb-result').style.display='none'; document.getElementById('mb-msg').textContent=''; }
+}
+
+// ── Overview ──
+async function loadOverview() {
+  const [kr, ur, sr] = await Promise.all([
+    fetch('/admin/api/keys',{headers:headers()}),
+    fetch('/admin/api/used-keys',{headers:headers()}),
+    fetch('/api/stock')
+  ]);
+  const keys = await kr.json(), used = await ur.json(), stock = await sr.json();
+  document.getElementById('ov-keys').textContent = Array.isArray(keys) ? keys.length : '—';
+  document.getElementById('ov-used').textContent = Array.isArray(used) ? used.length : '—';
+  document.getElementById('ov-1m').textContent = stock['1m']?.tokens ?? '—';
+  document.getElementById('ov-3m').textContent = stock['3m']?.tokens ?? '—';
+  const tbody = document.querySelector('#ov-keys-table tbody');
+  tbody.innerHTML = '';
+  if (Array.isArray(keys) && keys.length) {
+    keys.slice(0,5).forEach(k => {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.className = 'key-cell'; td1.textContent = k.key;
+      const td2 = document.createElement('td');
+      const chip2 = document.createElement('span'); chip2.className = 'chip chip-' + String(k.month) + 'm'; chip2.textContent = String(k.month) + 'M';
+      td2.appendChild(chip2);
+      const td3 = document.createElement('td'); td3.textContent = String(k.amount);
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+  } else { tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No active keys</td></tr>'; }
+}
+
+// ── Keys ──
+async function loadKeys() {
+  const r = await fetch('/admin/api/keys',{headers:headers()});
+  const keys = await r.json();
+  const tbody = document.querySelector('#keys-table tbody');
+  tbody.innerHTML = '';
+  if (!Array.isArray(keys) || !keys.length) { tbody.innerHTML='<tr><td colspan="4" class="empty-state">No active keys</td></tr>'; return; }
+  keys.forEach(k => {
+    const tr = document.createElement('tr');
+    const td1 = document.createElement('td'); td1.className = 'key-cell'; td1.textContent = k.key;
+    const td2 = document.createElement('td');
+    const chip2 = document.createElement('span'); chip2.className = 'chip chip-' + String(k.month) + 'm'; chip2.textContent = String(k.month) + 'M';
+    td2.appendChild(chip2);
+    const td3 = document.createElement('td'); td3.textContent = String(k.amount);
+    const td4 = document.createElement('td');
+    const delBtn = document.createElement('button'); delBtn.className = 'btn btn-danger btn-sm'; delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => deleteKey(k.key));
+    td4.appendChild(delBtn);
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+    tbody.appendChild(tr);
+  });
+}
+async function deleteKey(key) {
+  if (!confirm('Delete this key?')) return;
+  await fetch('/admin/api/key/'+encodeURIComponent(key),{method:'DELETE',headers:headers()});
+  toast('Key deleted','ok'); loadKeys(); loadOverview();
+}
+async function deleteAllKeys() {
+  if (!confirm('Delete ALL active keys? This cannot be undone.')) return;
+  await fetch('/admin/api/keys/all',{method:'DELETE',headers:headers()});
+  toast('All keys deleted','ok'); loadKeys(); loadOverview();
+}
+
+// ── Used Keys ──
+async function loadUsedKeys() {
+  const r = await fetch('/admin/api/used-keys',{headers:headers()});
+  const keys = await r.json();
+  const tbody = document.querySelector('#used-table tbody');
+  tbody.innerHTML = '';
+  if (!Array.isArray(keys) || !keys.length) { tbody.innerHTML='<tr><td colspan="7" class="empty-state">No used keys yet</td></tr>'; return; }
+  keys.reverse().forEach(k => {
+    const tr = document.createElement('tr');
+    const td1 = document.createElement('td'); td1.className = 'key-cell'; td1.textContent = k.key;
+    const td2 = document.createElement('td');
+    const chip2 = document.createElement('span'); chip2.className = 'chip chip-' + String(k.month) + 'm'; chip2.textContent = String(k.month) + 'M';
+    td2.appendChild(chip2);
+    const td3 = document.createElement('td'); td3.textContent = String(k.amount);
+    const td4 = document.createElement('td'); td4.textContent = k.guild_id || k.invite || '—';
+    const td5 = document.createElement('td'); td5.textContent = (k.successful||0)*2; td5.style.color = 'var(--green)';
+    const td6 = document.createElement('td'); td6.textContent = (k.failed||0)*2; td6.style.color = 'var(--red)';
+    const td7 = document.createElement('td'); td7.textContent = String(k.time_taken||'—') + 's';
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+    tr.appendChild(td5); tr.appendChild(td6); tr.appendChild(td7);
+    tbody.appendChild(tr);
+  });
+}
+async function clearUsedKeys() {
+  if (!confirm('Clear all used key history?')) return;
+  await fetch('/admin/api/used-keys/clear',{method:'DELETE',headers:headers()});
+  toast('Used keys history cleared','ok'); loadUsedKeys(); loadOverview();
+}
+
+// ── Generate ──
+async function generateKeys() {
+  const month = parseInt(document.getElementById('gen-month').value);
+  const amount = parseInt(document.getElementById('gen-amount').value);
+  const qty = parseInt(document.getElementById('gen-qty').value);
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating...';
+  const r = await fetch('/admin/api/generate-key',{method:'POST',headers:headers(),body:JSON.stringify({month,amount,quantity:qty})});
+  const d = await r.json();
+  btn.disabled=false; btn.innerHTML='Generate Keys';
+  if (d.keys) {
+    toast(`Generated ${d.keys.length} key(s)`,'ok');
+    const card = document.getElementById('gen-result-card');
+    card.style.display='block';
+    const tbody = document.querySelector('#gen-table tbody');
+    tbody.innerHTML='';
+    d.keys.forEach(k => {
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.className = 'key-cell'; td1.style.userSelect = 'all'; td1.textContent = k.key;
+      const td2 = document.createElement('td'); td2.textContent = String(k.month) + 'M';
+      const td3 = document.createElement('td'); td3.textContent = String(k.amount);
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+    loadOverview(); loadKeys();
+  } else { toast(d.error||'Error generating keys','err'); }
+}
+
+// ── Upload ──
+function fileSelected(type, input) {
+  if (!input.files[0]) return;
+  _selectedFiles[type] = input.files[0];
+  document.getElementById('dz'+type+'-name').textContent = '📄 ' + input.files[0].name;
+  document.getElementById('up'+type+'-btn').disabled = false;
+}
+function dzDrag(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function dzLeave(id) { document.getElementById(id).classList.remove('drag'); }
+function dzDrop(e, type) {
+  e.preventDefault(); dzLeave('dz'+type);
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  _selectedFiles[type] = file;
+  document.getElementById('dz'+type+'-name').textContent = '📄 ' + file.name;
+  document.getElementById('up'+type+'-btn').disabled = false;
+}
+async function uploadTokens(type) {
+  const file = _selectedFiles[type];
+  if (!file) return;
+  const btn = document.getElementById('up'+type+'-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Uploading...';
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', type);
+  const r = await fetch('/admin/api/upload-tokens',{method:'POST',headers:{'Authorization':'Bearer '+_token},body:fd});
+  const d = await r.json();
+  btn.disabled=false; btn.textContent='Upload to '+type.toUpperCase()+' Stock';
+  if (d.added !== undefined) { toast(`Added ${d.added} tokens to ${type} stock`,'ok'); loadStock(); loadOverview(); }
+  else { toast(d.error||'Upload failed','err'); }
+}
+
+// ── Manual Boost ──
+async function submitManualBoost() {
+  const invite = document.getElementById('mb-invite').value.trim();
+  const months = parseInt(document.getElementById('mb-months').value, 10);
+  const amount = parseInt(document.getElementById('mb-amount').value, 10);
+  const nick   = document.getElementById('mb-nick').value.trim() || undefined;
+  const bio    = document.getElementById('mb-bio').value.trim()  || undefined;
+  const msg    = document.getElementById('mb-msg');
+  const res    = document.getElementById('mb-result');
+  const btn    = document.getElementById('mbBtn');
+
+  if (!invite)                      { toast('Enter an invite or Guild ID','err'); return; }
+  if (isNaN(amount) || amount < 2 || amount % 2 !== 0) { toast('Amount must be an even number ≥ 2','err'); return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>&nbsp; Boosting...';
+  msg.textContent = 'Starting boost job…'; res.style.display='none';
+
+  try {
+    const r = await fetch('/admin/api/manual-boost', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({invite, months, amount, nick, bio})
+    });
+    const d = await r.json();
+    if (!d.success) {
+      toast(d.error || 'Boost failed', 'err');
+      msg.textContent = d.error || 'Boost failed';
+      btn.disabled = false; btn.innerHTML = '⚡ Start Boost';
+      return;
+    }
+    const job_id = d.job_id;
+    msg.textContent = `Job ${job_id} started — polling…`;
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      const pr = await fetch('/api/status/'+job_id, {headers: headers()});
+      const pd = await pr.json();
+      if (pd.status === 'done') {
+        res.style.display = 'block';
+        res.innerHTML = `<b style="color:#22c55e">✅ Boost complete</b><br>` +
+          `Success: ${pd.success} boosts &nbsp;|&nbsp; Failed: ${pd.failed} &nbsp;|&nbsp; Time: ${pd.time_taken}s`;
+        msg.textContent = '';
+        toast(`Boost complete — ${pd.success} boosts sent`, 'ok');
+        btn.disabled = false; btn.innerHTML = '⚡ Start Boost';
+      } else if (attempts < 60) {
+        msg.textContent = `Job ${job_id} — running (${attempts * 3}s)…`;
+        setTimeout(poll, 3000);
+      } else {
+        res.style.display = 'block';
+        res.innerHTML = `<b style="color:#f59e0b">⚠️ Timed out polling job ${job_id}</b><br>Check webhook for result.`;
+        msg.textContent = '';
+        btn.disabled = false; btn.innerHTML = '⚡ Start Boost';
+      }
+    };
+    setTimeout(poll, 3000);
+  } catch(e) {
+    toast('Request error: '+e.message,'err');
+    msg.textContent = ''; btn.disabled = false; btn.innerHTML = '⚡ Start Boost';
+  }
+}
+
+// ── Stock ──
+async function loadStock() {
+  const r = await fetch('/api/stock');
+  const d = await r.json();
+  document.getElementById('st-1m').textContent = d['1m'].tokens;
+  document.getElementById('st-1m-b').textContent = d['1m'].boosts;
+  document.getElementById('st-3m').textContent = d['3m'].tokens;
+  document.getElementById('st-3m-b').textContent = d['3m'].boosts;
+  document.getElementById('ov-1m').textContent = d['1m'].tokens;
+  document.getElementById('ov-3m').textContent = d['3m'].tokens;
+}
+async function clearStock(type) {
+  if (!confirm(`Clear ALL ${type} tokens from stock? Cannot be undone.`)) return;
+  await fetch('/admin/api/clear-stock/'+type,{method:'DELETE',headers:headers()});
+  toast(`${type} stock cleared`,'ok'); loadStock();
+}
+
+// ── Test Token ──
+async function runTokenTest() {
+  const token    = document.getElementById('tt-token').value.trim();
+  const guild_id = document.getElementById('tt-guild').value.trim();
+  if (!token) { toast('Paste a token first','err'); return; }
+
+  const btn  = document.getElementById('tt-btn');
+  const card = document.getElementById('tt-result-card');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Testing…';
+  card.style.display = 'none';
+
+  try {
+    const r = await fetch('/admin/api/test-token', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({token, guild_id})
+    });
+    const d = await r.json();
+
+    // Title
+    const titleEl = document.getElementById('tt-result-title');
+    titleEl.textContent = '';
+    const titleSpan = document.createElement('span');
+    titleSpan.style.color = d.valid ? 'var(--green)' : 'var(--red)';
+    titleSpan.textContent = d.valid ? '✅ Token Valid' : '❌ Token Invalid';
+    titleEl.appendChild(titleSpan);
+
+    // Account summary chips — DOM only, no innerHTML
+    const accountRow = document.getElementById('tt-account-row');
+    accountRow.textContent = '';
+    function _addChip(text, color) {
+      const sp = document.createElement('span');
+      sp.style.cssText = `background:${color}22;border:1px solid ${color}55;color:${color};border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;margin-right:4px`;
+      sp.textContent = text;
+      accountRow.appendChild(sp);
+    }
+    if (d.username) {
+      const sp = document.createElement('span');
+      sp.style.cssText = 'font-weight:700;font-size:15px;margin-right:4px';
+      sp.textContent = d.username;
+      accountRow.appendChild(sp);
+    }
+    if (d.user_id)         _addChip(String(d.user_id), '#6b6b8a');
+    if (d.nitro)           _addChip('🟡 Nitro', '#fbbf24');
+    if (d.boost_slots > 0) _addChip('⚡ ' + d.boost_slots + ' boost slot' + (d.boost_slots !== 1 ? 's' : ''), '#22c55e');
+    if (d.boost_slots_used) _addChip(d.boost_slots_used + ' used', '#6b6b8a');
+    if (d.verified)        _addChip('✉️ Verified', '#60a5fa');
+    if (d.phone)           _addChip('📱 Phone', '#34d399');
+
+    // Steps — DOM only, no innerHTML
+    const STEP_LABELS = {
+      validate: '1 · Validate Token',
+      nitro:    '2 · Nitro & Boost Slots',
+      oauth:    '3 · OAuth Token',
+      join:     '4 · Join Server',
+      boost:    '5 · Boost Server',
+    };
+    const stepsEl = document.getElementById('tt-steps');
+    stepsEl.textContent = '';
+    const steps = d.steps || {};
+    let hasStep = false;
+    for (const [key, label] of Object.entries(STEP_LABELS)) {
+      const s = steps[key];
+      if (!s) continue;
+      hasStep = true;
+      const icon  = s.ok === true ? '✅' : s.ok === false ? '❌' : '⏭';
+      const color = s.ok === true ? 'var(--green)' : s.ok === false ? 'var(--red)' : 'var(--muted)';
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)';
+      const iconEl = document.createElement('span');
+      iconEl.style.cssText = 'font-size:16px;flex-shrink:0;margin-top:1px';
+      iconEl.textContent = icon;
+      const info = document.createElement('div');
+      info.style.cssText = 'flex:1;min-width:0';
+      const labelEl = document.createElement('div');
+      labelEl.style.cssText = 'font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px';
+      labelEl.textContent = label;
+      const msgEl = document.createElement('div');
+      msgEl.style.cssText = `font-size:13px;color:${color};font-weight:500`;
+      msgEl.textContent = s.msg || '';
+      info.appendChild(labelEl);
+      info.appendChild(msgEl);
+      row.appendChild(iconEl);
+      row.appendChild(info);
+      stepsEl.appendChild(row);
+    }
+    if (!hasStep && d.error) {
+      const errEl = document.createElement('div');
+      errEl.style.cssText = 'color:var(--red);padding:12px 0;font-size:13px';
+      errEl.textContent = '❌ ' + d.error;
+      stepsEl.appendChild(errEl);
+    }
+
+    card.style.display = 'block';
+    toast(d.valid ? 'Test complete' : 'Token invalid — ' + (d.error||''), d.valid ? 'ok' : 'err');
+  } catch(e) {
+    toast('Request failed: ' + e, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧪 Run Test';
+}
+
+function chip(text, color) {
+  return `<span style="background:${color}22;border:1px solid ${color}55;color:${color};border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700">${esc(String(text))}</span>`;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Bulk Test ──
+let _btResults = [];
+
+async function runBulkTest() {
+  const raw = document.getElementById('bt-tokens').value;
+  const guild_id = document.getElementById('bt-guild').value.trim();
+  const tokens = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!tokens.length) { toast('Paste at least one token', 'err'); return; }
+  if (tokens.length > 100) { toast('Max 100 tokens at once', 'err'); return; }
+
+  const btn = document.getElementById('bt-btn');
+  const prog = document.getElementById('bt-progress');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Testing…';
+  prog.textContent = `Checking ${tokens.length} token${tokens.length !== 1 ? 's' : ''}…`;
+  document.getElementById('bt-result-card').style.display = 'none';
+
+  try {
+    const r = await fetch('/admin/api/bulk-test-tokens', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ tokens, guild_id })
+    });
+    const d = await r.json();
+    if (d.error) { toast(d.error, 'err'); btn.disabled = false; btn.innerHTML = '📋 Run Bulk Test'; prog.textContent = ''; return; }
+
+    _btResults = d.results || [];
+
+    // Summary tiles
+    const s = d.summary || {};
+    const tiles = [
+      { label: 'Total',    val: s.total   || 0, color: 'var(--accent2)' },
+      { label: 'Valid',    val: s.valid   || 0, color: 'var(--green)' },
+      { label: 'Nitro',   val: s.nitro   || 0, color: '#fbbf24' },
+      { label: 'Boost Slots', val: s.boost_slots || 0, color: '#22c55e' },
+      { label: 'Invalid', val: s.invalid || 0, color: 'var(--red)' },
+      { label: 'Locked',  val: s.locked  || 0, color: 'var(--yellow)' },
+    ];
+    if (guild_id) tiles.push({ label: 'Joined', val: s.joined || 0, color: 'var(--blue)' });
+
+    const summaryRow = document.getElementById('bt-summary-row');
+    summaryRow.textContent = '';
+    tiles.forEach(t => {
+      const tile = document.createElement('div'); tile.className = 'stat-tile';
+      const lbl = document.createElement('div'); lbl.className = 's-label'; lbl.textContent = t.label;
+      const val = document.createElement('div'); val.className = 's-val';
+      val.style.cssText = 'background:' + t.color + ';-webkit-background-clip:text;font-size:26px';
+      val.textContent = String(t.val);
+      tile.appendChild(lbl); tile.appendChild(val);
+      summaryRow.appendChild(tile);
+    });
+
+    // Reset filter
+    document.querySelectorAll('.bt-filter').forEach(b => b.classList.remove('active'));
+    document.querySelector('.bt-filter[data-filter="all"]').classList.add('active');
+
+    btRenderTable('all');
+    document.getElementById('bt-result-card').style.display = 'block';
+    prog.textContent = `Done — ${s.valid} valid, ${s.nitro} Nitro, ${s.invalid} invalid`;
+    toast(`Checked ${s.total} tokens`, 'ok');
+  } catch(e) {
+    toast('Request failed: ' + e, 'err');
+    prog.textContent = '';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '📋 Run Bulk Test';
+}
+
+const STATUS_META = {
+  'nitro':              { icon: '🟡', label: 'Nitro',        color: '#fbbf24' },
+  'valid':              { icon: '✅', label: 'Valid',         color: 'var(--green)' },
+  'locked':             { icon: '🔒', label: 'Locked',        color: 'var(--yellow)' },
+  'needs-verification': { icon: '📧', label: 'Needs Verify', color: 'var(--yellow)' },
+  'disabled':           { icon: '⛔', label: 'Disabled',      color: 'var(--red)' },
+  'rate-limited':       { icon: '⏳', label: 'Rate Limited',  color: '#60a5fa' },
+  'invalid':            { icon: '❌', label: 'Invalid',        color: 'var(--red)' },
+  'error':              { icon: '⚠️', label: 'Error',          color: 'var(--muted)' },
+};
+
+function _mkSpan(text, color, extraStyle) {
+  const s = document.createElement('span');
+  s.style.color = color;
+  if (extraStyle) Object.assign(s.style, extraStyle);
+  s.textContent = text;
+  return s;
+}
+function _mkTd(node, style) {
+  const td = document.createElement('td');
+  if (style) Object.assign(td.style, style);
+  if (node instanceof Node) td.appendChild(node);
+  else td.textContent = node == null ? '' : String(node);
+  return td;
+}
+
+function btRenderTable(filter) {
+  const tbody = document.getElementById('bt-tbody');
+  const filterMap = {
+    'all':     r => true,
+    'nitro':   r => r.status === 'nitro',
+    'valid':   r => r.valid,
+    'invalid': r => !r.valid,
+    'locked':  r => ['locked','needs-verification','disabled'].includes(r.status),
+  };
+  const fn = filterMap[filter] || (() => true);
+  const rows = _btResults.filter(fn);
+
+  tbody.textContent = '';
+
+  if (!rows.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 9; td.className = 'empty-state';
+    td.textContent = 'No results for this filter';
+    tr.appendChild(td); tbody.appendChild(tr);
+    return;
+  }
+
+  rows.forEach((r, i) => {
+    const safeStatus = Object.prototype.hasOwnProperty.call(STATUS_META, r.status) ? r.status : 'error';
+    const m = STATUS_META[safeStatus];
+    const tr = document.createElement('tr');
+    tr.dataset.status = safeStatus;
+
+    // #
+    tr.appendChild(_mkTd(i + 1, {color:'var(--muted)', fontSize:'12px'}));
+
+    // Status
+    const statusSpan = document.createElement('span');
+    statusSpan.style.cssText = `color:${m.color};font-weight:700;font-size:12px;white-space:nowrap`;
+    statusSpan.textContent = m.icon + ' ' + m.label;
+    tr.appendChild(_mkTd(statusSpan));
+
+    // Token preview
+    const tokSpan = document.createElement('span');
+    tokSpan.style.cssText = 'font-family:monospace;font-size:11px;color:var(--accent2)';
+    tokSpan.textContent = r.token_preview || '';
+    tr.appendChild(_mkTd(tokSpan));
+
+    // Username + badges
+    const userTd = document.createElement('td');
+    userTd.style.fontSize = '13px';
+    if (r.username) {
+      userTd.textContent = r.username;
+      if (r.verified) { const b = document.createElement('span'); b.style.cssText='color:#60a5fa;font-size:11px'; b.textContent='✉'; userTd.appendChild(b); }
+      if (r.phone)    { const b = document.createElement('span'); b.style.cssText='color:#34d399;font-size:11px'; b.textContent='📱'; userTd.appendChild(b); }
+    } else {
+      userTd.textContent = '—'; userTd.style.color = 'var(--muted)';
+    }
+    tr.appendChild(userTd);
+
+    // Nitro
+    const nitroSpan = _mkSpan(r.nitro ? 'Yes' : 'No', r.nitro ? '#fbbf24' : 'var(--muted)', r.nitro ? {fontWeight:'700'} : null);
+    tr.appendChild(_mkTd(nitroSpan));
+
+    // Boost slots
+    const slotsTd = document.createElement('td');
+    if (r.nitro) {
+      if (r.boost_slots > 0) {
+        const s1 = _mkSpan(String(r.boost_slots), 'var(--green)', {fontWeight:'700'});
+        slotsTd.appendChild(s1);
+        if (r.boost_slots_used) {
+          const s2 = _mkSpan(' +' + r.boost_slots_used + 'u', 'var(--muted)', {fontSize:'11px'});
+          slotsTd.appendChild(s2);
+        }
+      } else { slotsTd.textContent = '0'; slotsTd.style.color = 'var(--muted)'; }
+    } else { slotsTd.textContent = '—'; slotsTd.style.color = 'var(--muted)'; }
+    tr.appendChild(slotsTd);
+
+    // OAuth
+    const oauthTd = document.createElement('td');
+    oauthTd.textContent = r.oauth_token ? '✅' : (r.valid ? '❌' : '—');
+    oauthTd.style.color = r.oauth_token ? 'var(--green)' : (r.valid ? 'var(--red)' : 'var(--muted)');
+    tr.appendChild(oauthTd);
+
+    // Joined
+    const joinTd = document.createElement('td');
+    joinTd.textContent = r.joined === true ? '✅' : r.joined === false ? '❌' : '—';
+    joinTd.style.color = r.joined === true ? 'var(--green)' : r.joined === false ? 'var(--red)' : 'var(--muted)';
+    tr.appendChild(joinTd);
+
+    // Note
+    const noteTd = document.createElement('td');
+    if (r.error) { noteTd.textContent = r.error; noteTd.style.cssText='color:var(--muted);font-size:11px'; }
+    tr.appendChild(noteTd);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function btFilter(filter, btn) {
+  document.querySelectorAll('.bt-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btRenderTable(filter);
+}
+
+function btCopy(type) {
+  let tokens;
+  if (type === 'nitro')   tokens = _btResults.filter(r => r.status === 'nitro').map(r => r.raw);
+  else if (type === 'invalid') tokens = _btResults.filter(r => !r.valid).map(r => r.raw);
+  else tokens = _btResults.filter(r => r.valid).map(r => r.raw);
+
+  if (!tokens.length) { toast('Nothing to copy', 'err'); return; }
+  navigator.clipboard.writeText(tokens.join('\n')).then(() => {
+    toast(`Copied ${tokens.length} token${tokens.length !== 1 ? 's' : ''}`, 'ok');
+  }).catch(() => toast('Copy failed', 'err'));
+}
+
+// ── OAuth Status ──
+async function loadOAuthStatus() {
+  document.getElementById('oa-total').textContent   = '…';
+  document.getElementById('oa-authed').textContent  = '…';
+  document.getElementById('oa-missing').textContent = '…';
+  document.getElementById('oa-msg').textContent     = '';
+  try {
+    const r = await fetch('/admin/api/oauth-status', {headers: headers()});
+    const d = await r.json();
+    document.getElementById('oa-total').textContent   = d.total;
+    document.getElementById('oa-authed').textContent  = d.authed;
+    document.getElementById('oa-missing').textContent = d.missing;
+    renderOAuthTable('1m', d.tokens['1m'] || []);
+    renderOAuthTable('3m', d.tokens['3m'] || []);
+  } catch(e) {
+    toast('Failed to load OAuth status', 'err');
+  }
+}
+
+function renderOAuthTable(label, tokens) {
+  const authed  = tokens.filter(t => t.has_oauth).length;
+  const missing = tokens.length - authed;
+  document.getElementById('oa-'+label+'-summary').textContent =
+    tokens.length + ' tokens — ' + authed + ' authorized, ' + missing + ' missing';
+
+  const tbody = document.querySelector('#oa-table-'+label+' tbody');
+  tbody.innerHTML = '';
+  if (!tokens.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No tokens in stock</td></tr>';
+    return;
+  }
+  tokens.forEach(t => {
+    const oauthCell = t.has_oauth
+      ? `<span style="color:var(--green);font-weight:700">✅ Valid</span>`
+      : `<span style="color:var(--red);font-weight:700">❌ Missing</span>`;
+    const expiresCell = t.has_oauth && t.expires_in != null
+      ? fmtSeconds(t.expires_in)
+      : '—';
+    const tr = document.createElement('tr');
+    const tdTok = document.createElement('td');
+    const tokSpan = document.createElement('span'); tokSpan.style.cssText = 'font-family:monospace;font-size:12px;color:var(--accent2)'; tokSpan.textContent = t.token_preview || '';
+    tdTok.appendChild(tokSpan);
+    const tdUser = document.createElement('td');
+    if (t.user_id) { const s = document.createElement('span'); s.style.cssText='font-family:monospace;font-size:12px;color:var(--muted)'; s.textContent=t.user_id; tdUser.appendChild(s); } else { tdUser.textContent='—'; tdUser.style.color='var(--muted)'; }
+    const tdOauth = document.createElement('td'); tdOauth.textContent = t.has_oauth ? '✅' : '❌'; tdOauth.style.color = t.has_oauth ? 'var(--green)' : 'var(--red)';
+    const tdExp = document.createElement('td'); tdExp.style.cssText='font-size:12px;color:var(--muted)'; tdExp.textContent = expiresCell;
+    tr.appendChild(tdTok); tr.appendChild(tdUser); tr.appendChild(tdOauth); tr.appendChild(tdExp);
+    tbody.appendChild(tr);
+  });
+}
+
+function fmtSeconds(s) {
+  if (s >= 86400) return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h';
+  if (s >= 3600)  return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+  return Math.floor(s / 60) + 'm';
+}
+
+async function triggerReauth() {
+  const btn = document.getElementById('reauthBtn');
+  const msg = document.getElementById('oa-msg');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Re-authorizing…';
+  msg.textContent = '';
+  try {
+    const r = await fetch('/admin/api/oauth-reauth', {method:'POST', headers:headers()});
+    const d = await r.json();
+    msg.textContent = d.message || 'Done.';
+    if (d.queued > 0) {
+      toast('Re-auth started for ' + d.queued + ' token(s)', 'ok');
+      setTimeout(loadOAuthStatus, 4000);
+    } else {
+      toast('All tokens already authorized', 'ok');
+    }
+  } catch(e) {
+    toast('Re-auth request failed', 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Re-Authorize Missing';
+}
+
+// ── Secrets ──
+let _secDirty = {};
+
+
+async function loadSecrets() {
+  const container = document.getElementById('sec-fields-container');
+  const btn = document.getElementById('sec-save-btn');
+  container.innerHTML = '<div class="empty-state">Loading…</div>';
+  _secDirty = {};
+  btn.disabled = true;
+  try {
+    const r = await fetch('/admin/api/secrets', { headers: headers() });
+    const d = await r.json();
+    if (d.error) {
+      container.textContent = '';
+      const errDiv = document.createElement('div'); errDiv.className = 'empty-state'; errDiv.style.color = 'var(--red)'; errDiv.textContent = d.error;
+      container.appendChild(errDiv); return;
+    }
+    renderSecretFields(d.fields || []);
+  } catch(e) {
+    container.textContent = '';
+    const errDiv = document.createElement('div'); errDiv.className = 'empty-state'; errDiv.style.color = 'var(--red)'; errDiv.textContent = 'Failed to load: ' + String(e);
+    container.appendChild(errDiv);
+  }
+}
+
+function renderSecretFields(fields) {
+  const container = document.getElementById('sec-fields-container');
+  container.innerHTML = '';
+  fields.forEach(f => {
+    const isEnv = f.source === 'env';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'padding:14px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:200px 1fr auto;align-items:center;gap:14px';
+
+    const labelCol = document.createElement('div');
+    const lbTitle = document.createElement('div'); lbTitle.style.cssText='font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px'; lbTitle.textContent = f.label;
+    const lbKey = document.createElement('div'); lbKey.style.cssText='font-size:10px;font-family:monospace;color:var(--muted)'; lbKey.textContent = f.key;
+    const lbBadge = document.createElement('div'); lbBadge.style.marginTop='5px';
+    const SOURCE_BADGE_DEF = {
+      'env':          {bg:'rgba(34,197,94,.15)',border:'rgba(34,197,94,.3)',color:'#22c55e',text:'ENV VAR'},
+      'secrets_file': {bg:'rgba(168,85,247,.15)',border:'rgba(168,85,247,.3)',color:'#a855f7',text:'SECRETS'},
+      'not_set':      {bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.25)',color:'#f87171',text:'NOT SET'},
+    };
+    const srcKey = Object.prototype.hasOwnProperty.call(SOURCE_BADGE_DEF, String(f.source)) ? String(f.source) : '';
+    if (srcKey) {
+      const bd = SOURCE_BADGE_DEF[srcKey];
+      const badgeSpan = document.createElement('span');
+      badgeSpan.style.cssText = `background:${bd.bg};border:1px solid ${bd.border};color:${bd.color};border-radius:5px;padding:1px 8px;font-size:11px;font-weight:700`;
+      badgeSpan.textContent = bd.text;
+      lbBadge.appendChild(badgeSpan);
+    }
+    labelCol.appendChild(lbTitle); labelCol.appendChild(lbKey); labelCol.appendChild(lbBadge);
+
+    const inputCol = document.createElement('div');
+    inputCol.style.cssText = 'display:flex;align-items:center;gap:8px;';
+    const inp = document.createElement('input');
+    inp.type = 'password';
+    inp.id = 'sec-' + f.key;
+    inp.placeholder = isEnv
+      ? '⚡ Set via env var — enter new value to override in secrets.json'
+      : (f.set ? 'Current: ' + f.masked + '  (leave blank to keep)' : 'Enter value…');
+    inp.style.cssText = 'flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 12px;font-size:13px;font-family:monospace;outline:none;transition:border-color .2s';
+    if (isEnv) inp.style.opacity = '0.6';
+    inp.addEventListener('focus', () => inp.style.borderColor = 'var(--accent)');
+    inp.addEventListener('blur',  () => inp.style.borderColor = 'var(--border)');
+    inp.addEventListener('input', () => {
+      _secDirty[f.key] = inp.value;
+      document.getElementById('sec-save-btn').disabled = false;
+      document.getElementById('sec-msg').textContent = '';
+    });
+
+    const eyeBtn = document.createElement('button');
+    eyeBtn.className = 'btn btn-ghost btn-sm';
+    eyeBtn.title = 'Show/hide';
+    eyeBtn.textContent = '👁';
+    eyeBtn.style.flexShrink = '0';
+    eyeBtn.onclick = () => { inp.type = inp.type === 'password' ? 'text' : 'password'; };
+
+    inputCol.appendChild(inp);
+    inputCol.appendChild(eyeBtn);
+
+    const statusCol = document.createElement('div');
+    statusCol.style.textAlign = 'center';
+    const statusIcon = document.createElement('span');
+    statusIcon.style.cssText = (f.set ? 'color:var(--green)' : 'color:var(--red)') + ';font-size:18px';
+    statusIcon.title = f.set ? 'Value is set' : 'Not configured';
+    statusIcon.textContent = f.set ? '✅' : '❌';
+    statusCol.appendChild(statusIcon);
+
+    wrapper.appendChild(labelCol);
+    wrapper.appendChild(inputCol);
+    wrapper.appendChild(statusCol);
+    container.appendChild(wrapper);
+  });
+}
+
+async function saveSecrets() {
+  const btn = document.getElementById('sec-save-btn');
+  const msg = document.getElementById('sec-msg');
+  if (!Object.keys(_secDirty).length) { toast('No changes to save','err'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+  msg.textContent = '';
+  try {
+    const r = await fetch('/admin/api/secrets', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ secrets: _secDirty })
+    });
+    const d = await r.json();
+    if (d.error) { toast(d.error, 'err'); btn.disabled = false; btn.innerHTML = '💾 Save Changes'; return; }
+    toast(d.message || 'Saved', 'ok');
+    msg.textContent = d.message || '';
+    msg.style.color = 'var(--green)';
+    _secDirty = {};
+    // Reload to show updated status
+    setTimeout(loadSecrets, 500);
+  } catch(e) {
+    toast('Save failed: ' + e, 'err');
+  }
+  btn.innerHTML = '💾 Save Changes';
+}
+
+async function restartBot() {
+  const btn = document.getElementById('restart-btn');
+  const msg = document.getElementById('restart-msg');
+  if (!confirm('Restart the bot? It will reconnect to Discord in a few seconds.')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Restarting…';
+  msg.textContent = '';
+  try {
+    const r = await fetch('/admin/api/bot-restart', { method: 'POST', headers: headers() });
+    const d = await r.json();
+    if (d.error) { toast(d.error, 'err'); btn.disabled = false; btn.innerHTML = '🔄 Restart Bot'; return; }
+    toast('Bot is restarting — reconnecting to Discord…', 'ok');
+    msg.textContent = 'Restarting… page will refresh in 8 seconds.';
+    msg.style.color = 'var(--green)';
+    setTimeout(() => location.reload(), 8000);
+  } catch(e) {
+    toast('Restart failed: ' + e, 'err');
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Restart Bot';
+  }
+}
+
+// ── Toast ──
+let _tTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + (type||'ok');
+  clearTimeout(_tTimer); _tTimer = setTimeout(()=>el.className='', 3000);
+}
+
+// ── Init ──
+(async () => {
+  if (_token && await verifyToken()) { showAdmin(); }
+})();
+</script>
+</body>
+</html>
