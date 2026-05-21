@@ -1,8 +1,8 @@
 colorama==0.4.6
 discord.py
-Flask==3.0.2
+Flask==3.1.2
 httpx
-requests==2.31.0
+requests==2.32.4
 tls-client==1.0.1
 typing_extensions==4.10.0
 pymongo[srv]
