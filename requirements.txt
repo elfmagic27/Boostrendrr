@@ -6,7 +6,8 @@ requests==2.32.4
 tls-client==1.0.1
 typing_extensions==4.10.0
 pymongo[srv]
-fastapi
+fastapi==0.103.2
+pydantic==1.10.21
 websocket-client
 uvicorn[standard]
 websockets
