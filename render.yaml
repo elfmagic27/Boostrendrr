@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: boost-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: /health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_CLIENT_ID
+        sync: false
+      - key: BOT_CLIENT_SECRET
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: PANEL_PASSWORD
+        sync: false
